@@ -8,7 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class TemperatureSensor  implements Callable<Void> {
-	
+		
+		//PRUEBA de push
 	    public static final String TOPIC = "iot-2/evt/temperature/fmt/json"; //"temperature";
 
 	    private IMqttClient client;
