@@ -15,7 +15,6 @@ public class ControlPanel {
 	public static void main(String[] args) throws MqttException {
 		
 		String publisherId = "a:6relw0:qcs1tfgehi";
-		
 		String IBMIoT = "tcp://6relw0.messaging.internetofthings.ibmcloud.com:1883";
 
 		
@@ -23,7 +22,12 @@ public class ControlPanel {
 		
 		
 		
-		System.out.println("papaya");
+		
+		
+		
+
+		
+		
 		publisher.disconnect();
 		publisher.close();
 

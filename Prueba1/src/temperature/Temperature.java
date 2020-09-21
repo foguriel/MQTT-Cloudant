@@ -3,11 +3,12 @@ package temperature;
 import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-//import org.eclipse.paho.client.mqttv3.MqttException;
 
 
 public class Temperature {
-
+	
+	static int QOS = 0;
+	
 	public static void main(String[] args) throws Exception {
 		String publisherId = "d:6relw0:Sensor:TEMPERATURE1";
 		String IBMIoT = "tcp://6relw0.messaging.internetofthings.ibmcloud.com:1883";
@@ -27,24 +28,18 @@ public class Temperature {
 		
 		if (publisher.isConnected()) {
 			
+			System.out.println("El sensor se encuentra en línea.");
 			
-			for (int i = 0; i < 2; i++ ){
-				
-				TemperatureSensor ts = new TemperatureSensor(publisher);
-				ts.call();
-				
+			for (int i = 0; i < 10; i++ ){
+				new TemperatureSensor(publisher, QOS).call();
 				Thread.sleep(5000);
 			}
-
 			publisher.disconnect();
-			
 		}
 		
-		System.out.println("papaya");
-		
-		
+		System.out.println("Sensor desconectado.");
+	
 		publisher.close();
-
 	}
 
 }

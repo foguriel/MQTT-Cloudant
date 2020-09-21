@@ -9,14 +9,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class TemperatureSensor  implements Callable<Void> {
 		
-		//PRUEBA de push
-	    public static final String TOPIC = "iot-2/evt/temperature/fmt/json"; //"temperature";
+	    public static final String TOPIC = "iot-2/evt/temperature/fmt/json";
 
 	    private IMqttClient client;
 	    private Random rnd = new Random();
-
-	    public TemperatureSensor(IMqttClient client) {
+	    private int QOS = 0;
+	    
+	    public TemperatureSensor(IMqttClient client, int QOS) {
 	        this.client = client;
+	        this.QOS = QOS;
 	    }
 
 	    @Override
@@ -41,6 +42,7 @@ public class TemperatureSensor  implements Callable<Void> {
 	    	obj.put("Temperatura", Double.valueOf(5 + rnd.nextDouble() * 20.0));
 	    	byte[] payload = obj.toString().getBytes();
 	        MqttMessage msg = new MqttMessage(payload); 
+	        msg.setQos(QOS);
 	        return msg;
 	    }
 
