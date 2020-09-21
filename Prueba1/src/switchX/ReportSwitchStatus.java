@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class ReportSwitchStatus implements Callable<Void> {
 	
-	public static final String TOPIC = "iot-2/evt/switch_status/fmt/jso";
+	public static final String TOPIC = "iot-2/evt/switch_status/fmt/json";
 
     private IMqttClient client;
     private int switch_status;
