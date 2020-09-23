@@ -2,6 +2,7 @@ package switchX;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Scanner;
 import java.util.concurrent.Executors;
 
 import org.eclipse.paho.client.mqttv3.IMqttClient;
@@ -63,8 +64,6 @@ public class Switch {
 	        MqttMessage msg = new MqttMessage(payload);
 	        msg.setQos(QOS);
 	        client.publish("iot-2/evt/switch_status/fmt/json", msg);
-	        
-	        System.out.println("Reportado.");
         }
 	}
 	
@@ -75,8 +74,7 @@ public class Switch {
 		String IBMIoT = "tcp://6relw0.messaging.internetofthings.ibmcloud.com:1883";
 		String user = "use-token-auth";
 		String password = "PDyTR2020";
-		
-		
+				
 		IMqttClient publisher = new MqttClient(IBMIoT, publisherId);
 		
 		MqttConnectOptions options = new MqttConnectOptions();
@@ -89,24 +87,17 @@ public class Switch {
 		
 		if (publisher.isConnected()) {
 			
-			System.out.println("El switch se encuentra en línea.");
+			System.out.println("El switch se encuentra en línea. Finalice con q");
 			
 			publisher.setCallback(new MqttCallback() {
 				public void messageArrived(String topic, MqttMessage message) throws Exception {
 					final String payload = new String(message.getPayload());
-
-					
-					System.out.println(payload.toString());
-					System.out.println(topic);
-					
+					//System.out.println(payload.toString());
+					//System.out.println(topic);
 	                if (payload.contains("\"toggle\"") ) {
-	                	System.out.println("Se activó el interruptor, el estado es ahora " + Integer.valueOf(toggle()).toString());
-	                }else if(payload.contains("\"finish\"")){
-	                	finished = true;
-	                	System.out.println(finished); 
-	                	System.out.println("Se recibió la orden de apagar el sensor.");
+	                	System.out.println("Se activó el interruptor, el estado es ahora " + (Integer.valueOf(toggle()).equals(1)  ? "ENCENDIDO" : "APAGADO"));
 	                }else if(payload.contains("\"status\"")){
-	                	System.out.println("Reportando el estado " + Integer.valueOf(switch_status).toString());
+	                	System.out.println("Reportando el estado " + (Integer.valueOf(switch_status).equals(1)  ? "ENCENDIDO" : "APAGADO") );
 	                	Executors.newSingleThreadScheduledExecutor().execute(new Runnable() {
 	                        public void run() {
 	                            try {
@@ -135,16 +126,12 @@ public class Switch {
 			
 			report_status(publisher);
             
-			//while (finished == false)			{}
-			
-			while(!finished) {
-				  //attempt to satisfy some condition
-				//System.out.println(finished); 
-				  if (finished == true) {
-					System.out.println(finished); 
-				    break;
-				  }
-				}
+			Scanner choose = new Scanner(System.in);
+			String choice= null;
+			while (!"q".equals(choice)) {
+		        choice = choose.nextLine();
+		    }
+		    choose.close();
 
 			publisher.unsubscribe("iot-2/cmd/switch_request/fmt/json");
 			publisher.disconnect();

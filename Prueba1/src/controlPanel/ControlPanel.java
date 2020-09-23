@@ -82,19 +82,16 @@ public class ControlPanel {
 			publisher.setCallback(new MqttCallback() {
 				public void messageArrived(String topic, MqttMessage message) throws Exception {
 					final String payload = new String(message.getPayload());
-
-					
 					//System.out.println(payload.toString());
 					//System.out.println(topic);
-					
-					if (topic.contains("/evt/temperature/")) {
+					if (topic.contains("/temperature/")) {
 						ObjectMapper mapper= new ObjectMapper();
 				    	JsonNode obj = mapper.readTree( payload.toString() );
 				    	temperaturaX = obj.get("Temperatura").asDouble();
-	                }else if(topic.contains("/evt/switch_status/")){
+	                }else if(topic.contains("/switch_status/")){
 	                	ObjectMapper mapper= new ObjectMapper();
 				    	JsonNode obj = mapper.readTree( payload.toString() );
-				    	System.out.println("Reportando el estado: " + obj.get("status").asText());
+				    	System.out.println("Reportando el estado: " + (String.valueOf(obj.get("status").asText()).equals("true") ? "ENCENDIDO" : "APAGADO"));
 	                }else {
 	                	System.out.println("Se recibió un mensaje inválido.");
 	                }
@@ -102,8 +99,7 @@ public class ControlPanel {
 
 	            public void connectionLost(Throwable cause) {
 	                System.out.println("Se perdió la conexión. " + cause.getMessage());
-	                
-	            }
+ 	            }
 
 	            public void deliveryComplete(IMqttDeliveryToken token) {
 	            }
@@ -124,27 +120,16 @@ public class ControlPanel {
 		    while (!"q".equals(choice)) {
 		        choice = choose.nextLine();
 		        if ("1".equals(choice)) {
-		        	
 		        	System.out.println("La temperatura es " + temperaturaX.toString());
 		            choice = null;
 		        }
 		        if ("2".equals(choice)) {
-		                
-		        	msgToSwitch(publisher, "toggle");
-		        	
+		            msgToSwitch(publisher, "toggle");
 		        	System.out.println("Se modificó el estado de la luz.");
 		            choice = null;
 		        }
 		        if ("3".equals(choice)) {
-		            
 		        	msgToSwitch(publisher, "status");
-		        	
-		            choice = null;
-		        }
-		        if ("4".equals(choice)) {
-		            
-		        	msgToSwitch(publisher, "finish");
-		        	System.out.println("Finalizar sensor de luz.");
 		            choice = null;
 		        }
 		    }

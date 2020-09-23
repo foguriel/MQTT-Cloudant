@@ -3,6 +3,8 @@ package temperature;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Random;
+import java.util.Scanner;
+
 import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -45,7 +47,9 @@ public class Temperature {
 	        MqttMessage msg = readTemp();
 	        msg.setQos(0);
 	        msg.setRetained(true);
-	        client.publish("iot-2/evt/temperature/fmt/json",msg);        
+	        client.publish("iot-2/evt/temperature/fmt/json",msg);      
+	        
+	        
         }        
     }
     
@@ -53,6 +57,7 @@ public class Temperature {
     	ObjectMapper mapper= new ObjectMapper();
     	ObjectNode obj = mapper.createObjectNode();
     	obj.put("Temperatura", Double.valueOf(5 + rnd.nextDouble() * 20.0));
+    	System.out.println("Reportando temperatura: " + obj.get("Temperatura"));
     	byte[] payload = obj.toString().getBytes();
         MqttMessage msg = new MqttMessage(payload); 
         msg.setQos(QOS);
@@ -76,10 +81,9 @@ public class Temperature {
 		options.setPassword(password.toCharArray());
 		publisher.connect(options);
 		
-		
 		if (publisher.isConnected()) {
 			
-			System.out.println("El sensor se encuentra en línea.");
+			System.out.println("El sensor se encuentra en línea. Finalice con q");
 			
 			publisher.setCallback(new MqttCallback() {
 				public void messageArrived(String topic, MqttMessage message) throws Exception {
@@ -94,11 +98,20 @@ public class Temperature {
 				
 			});
 			
+			Runnable r = new ReportThread(publisher);
+			Thread t = new Thread(r);
+			t.start();
 			
-			for (int i = 0; i < 100; i++ ){
-				report_temp(publisher);
-				Thread.sleep(1000);
-			}
+			Scanner choose = new Scanner(System.in);
+			String choice= null;
+			while (!"q".equals(choice)) {
+		        choice = choose.nextLine();
+		    }
+		    choose.close();
+		    
+		    ((ReportThread) r).terminate();
+		    t.join();
+	    
 			publisher.disconnect();
 		}
 		
@@ -106,5 +119,30 @@ public class Temperature {
 	
 		publisher.close();
 	}
+	
+	static public class ReportThread implements Runnable {
+		IMqttClient publisher;
+		private volatile boolean running = true;
+
+	    public void terminate() {
+	        running = false;
+	    }
+		public ReportThread (IMqttClient p) {
+			this.publisher = p;
+		}
+		
+	    @Override
+	    public void run() {
+	        	while (running) {
+	        		try {
+						report_temp(publisher);
+						Thread.sleep(1000);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+	        	}
+	        }
+	    }
+	
 
 }
