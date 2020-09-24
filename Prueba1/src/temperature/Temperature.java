@@ -12,9 +12,11 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import com.cloudant.client.api.*;
 
 public class Temperature {
 	
@@ -24,7 +26,7 @@ public class Temperature {
 	@SuppressWarnings("unchecked")
     public static void disableAccessWarnings() {
         try {
-            Class unsafeClass = Class.forName("sun.misc.Unsafe");
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
             Field field = unsafeClass.getDeclaredField("theUnsafe");
             field.setAccessible(true);
             Object unsafe = field.get(null);
@@ -32,7 +34,7 @@ public class Temperature {
             Method putObjectVolatile = unsafeClass.getDeclaredMethod("putObjectVolatile", Object.class, long.class, Object.class);
             Method staticFieldOffset = unsafeClass.getDeclaredMethod("staticFieldOffset", Field.class);
 
-            Class loggerClass = Class.forName("jdk.internal.module.IllegalAccessLogger");
+            Class<?> loggerClass = Class.forName("jdk.internal.module.IllegalAccessLogger");
             Field loggerField = loggerClass.getDeclaredField("logger");
             Long offset = (Long) staticFieldOffset.invoke(unsafe, loggerField);
             putObjectVolatile.invoke(unsafe, loggerClass, offset, null);
@@ -118,6 +120,9 @@ public class Temperature {
 		System.out.println("Sensor desconectado.");
 	
 		publisher.close();
+		
+		
+		 
 	}
 	
 	static public class ReportThread implements Runnable {

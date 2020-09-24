@@ -10,20 +10,28 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
+import generalPackage.TemperatureItem;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
 
+import com.cloudant.client.api.*;
+import com.cloudant.client.api.model.Response;
 
 public class ControlPanel {
 
 	static int QOS = 0;
 	static Double temperaturaX;
-
+	static Database Cdb;
 	
 	@SuppressWarnings("unchecked")
     public static void disableAccessWarnings() {
         try {
-            Class unsafeClass = Class.forName("sun.misc.Unsafe");
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
             Field field = unsafeClass.getDeclaredField("theUnsafe");
             field.setAccessible(true);
             Object unsafe = field.get(null);
@@ -31,7 +39,7 @@ public class ControlPanel {
             Method putObjectVolatile = unsafeClass.getDeclaredMethod("putObjectVolatile", Object.class, long.class, Object.class);
             Method staticFieldOffset = unsafeClass.getDeclaredMethod("staticFieldOffset", Field.class);
 
-            Class loggerClass = Class.forName("jdk.internal.module.IllegalAccessLogger");
+            Class<?> loggerClass = Class.forName("jdk.internal.module.IllegalAccessLogger");
             Field loggerField = loggerClass.getDeclaredField("logger");
             Long offset = (Long) staticFieldOffset.invoke(unsafe, loggerField);
             putObjectVolatile.invoke(unsafe, loggerClass, offset, null);
@@ -112,11 +120,11 @@ public class ControlPanel {
 			System.out.println(" 1) Consultar la temperatura");
 			System.out.println(" 2) Prender/apagar la luz");
 			System.out.println(" 3) Consultar el estado de la luz");
+			System.out.println(" 4) Prueba de conexión");
 			System.out.println(" q) Cerrar el panel de control");
 						
 			Scanner choose = new Scanner(System.in);
 		    String choice= null;
-		    int j = 0;
 		    while (!"q".equals(choice)) {
 		        choice = choose.nextLine();
 		        if ("1".equals(choice)) {
@@ -132,6 +140,22 @@ public class ControlPanel {
 		        	msgToSwitch(publisher, "status");
 		            choice = null;
 		        }
+		        if ("4".equals(choice)) {
+		        	
+		        	Cdb = getDb("db20");
+		        	
+		        	//TemperatureItem ti = new TemperatureItem(3);
+		        	//Response response = Cdb.save(ti);
+		        	
+		        	 JsonObject json = new JsonObject();
+		        	 json.addProperty("_id", "1:test-doc-id-2");
+		        	 json.add("json-array", new JsonArray());
+		        	 Response response = Cdb.save(json);
+		        	 
+		        	
+		            choice = null;
+		        }
+		        
 		    }
 		    choose.close();
 			
@@ -144,5 +168,27 @@ public class ControlPanel {
 		publisher.close();
 
 	}
+	
+	public static CloudantClient connect() throws Exception {
+		CloudantClient client = ClientBuilder.url(new URL("https://2eddbd51-59ea-4e2a-88c4-77b2fa3b56bd-bluemix.cloudantnosqldb.appdomain.cloud"))
+			.iamApiKey("zmH8P6kAH5h2PUjpbb1620XUCDx8B8HniCUHvpBbUoGu")
+            .build();
+		
+		System.out.println("Conectado - " + client.getBaseUri());
+		
+		return client;
+		
+	}
+	
+	public static Database getDb(String dbName) throws Exception {
+		
+		Database db = connect().database(dbName, false);
+		
+		System.out.println("Base de datos disponible - " + db.getDBUri());
+		
+		return db;
+		
+	}
+	
 
 }
