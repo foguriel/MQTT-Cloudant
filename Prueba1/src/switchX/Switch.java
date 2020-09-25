@@ -3,15 +3,14 @@ package switchX;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -19,6 +18,8 @@ public class Switch {
 	static int QOS = 0;
 	static int switch_status = 0;
 	static boolean finished = false;
+	
+	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
 	
 	@SuppressWarnings("unchecked")
     public static void disableAccessWarnings() {
@@ -96,9 +97,19 @@ public class Switch {
 					//System.out.println(topic);
 	                if (payload.contains("\"toggle\"") ) {
 	                	System.out.println("Se activó el interruptor, el estado es ahora " + (Integer.valueOf(toggle()).equals(1)  ? "ENCENDIDO" : "APAGADO"));
+	                	System.out.println("Reportando el estado " + (Integer.valueOf(switch_status).equals(1)  ? "ENCENDIDO" : "APAGADO") );
+	                	taskExecutor.execute(new Runnable() {
+	                        public void run() {
+	                            try {
+	                            	report_status(publisher);
+	                            } catch (Exception e) {
+	                                e.printStackTrace();
+	                            }
+	                        }
+	                    });
 	                }else if(payload.contains("\"status\"")){
 	                	System.out.println("Reportando el estado " + (Integer.valueOf(switch_status).equals(1)  ? "ENCENDIDO" : "APAGADO") );
-	                	Executors.newSingleThreadScheduledExecutor().execute(new Runnable() {
+	            		taskExecutor.execute(new Runnable() {
 	                        public void run() {
 	                            try {
 	                            	report_status(publisher);
@@ -132,7 +143,7 @@ public class Switch {
 		        choice = choose.nextLine();
 		    }
 		    choose.close();
-
+		    taskExecutor.shutdown();
 			publisher.unsubscribe("iot-2/cmd/switch_request/fmt/json");
 			publisher.disconnect();
 		}

@@ -3,17 +3,32 @@ package generalPackage;
 import java.time.LocalDateTime;
 
 public class TemperatureItem  {
-	//private LocalDateTime fecha;
+	private String _id;
+	private LocalDateTime fecha;
 	private double temperature;
 	
 	public TemperatureItem(double t) {
-		//this.fecha = LocalDateTime.now();
+		this.fecha = LocalDateTime.now();
 		this.temperature = t;
 	}
 	
-	/*public TemperatureItem(LocalDateTime f, double t) {
+	public TemperatureItem(LocalDateTime f, double t) {
 		this.fecha = f;
 		this.temperature = t;
+	}
+	
+	public TemperatureItem(String id, double t) {
+		this._id = id;
+		this.fecha = LocalDateTime.now();
+		this.temperature = t;
+	}
+	
+	public String getId() {
+		return this._id;
+	}
+	
+	public void setId(String id) {
+		this._id = id;
 	}
 	
 	public LocalDateTime getFecha() {
@@ -22,7 +37,7 @@ public class TemperatureItem  {
 	
 	public void setFecha(LocalDateTime f) {
 		this.fecha = f;
-	}*/
+	}
 	
 	public double getTemperature() {
 		return this.temperature;

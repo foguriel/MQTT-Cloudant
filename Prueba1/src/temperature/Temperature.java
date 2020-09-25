@@ -4,6 +4,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -12,17 +15,25 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
-
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import generalPackage.Cloudant;
+import generalPackage.SwitchItem;
+import generalPackage.TemperatureItem;
+
 import com.cloudant.client.api.*;
+import com.cloudant.client.api.model.Response;
 
 public class Temperature {
 	
 	static int QOS = 0;
 	private static Random rnd = new Random();
-    
+	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
+	static boolean running = true; 
+	static String tempSPartition = "tempSensor";
+	
 	@SuppressWarnings("unchecked")
     public static void disableAccessWarnings() {
         try {
@@ -51,7 +62,9 @@ public class Temperature {
 	        msg.setRetained(true);
 	        client.publish("iot-2/evt/temperature/fmt/json",msg);      
 	        
-	        
+	        ObjectMapper mapper= new ObjectMapper();
+	    	JsonNode obj = mapper.readTree(msg.getPayload().toString());
+	        saveTemperature(obj.get("Temperatura").asDouble());
         }        
     }
     
@@ -97,12 +110,9 @@ public class Temperature {
 
 	            public void deliveryComplete(IMqttDeliveryToken token) {
 	            }
-				
 			});
 			
-			Runnable r = new ReportThread(publisher);
-			Thread t = new Thread(r);
-			t.start();
+			ReportThread(publisher);
 			
 			Scanner choose = new Scanner(System.in);
 			String choice= null;
@@ -110,44 +120,51 @@ public class Temperature {
 		        choice = choose.nextLine();
 		    }
 		    choose.close();
-		    
-		    ((ReportThread) r).terminate();
-		    t.join();
-	    
+		    running = false;
+		    taskExecutor.shutdown();
+		
 			publisher.disconnect();
 		}
 		
 		System.out.println("Sensor desconectado.");
 	
 		publisher.close();
+
+	}
 		
-		
-		 
+	public static void ReportThread(IMqttClient publisher) {
+		taskExecutor.execute(new Runnable() {
+            public void run() {
+                try {
+                	while (running) {
+    	        		try {
+    						report_temp(publisher);
+    						Thread.sleep(1000);
+    					} catch (Exception e) {
+    						e.printStackTrace();
+    					}
+    	        	}
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 	}
 	
-	static public class ReportThread implements Runnable {
-		IMqttClient publisher;
-		private volatile boolean running = true;
-
-	    public void terminate() {
-	        running = false;
-	    }
-		public ReportThread (IMqttClient p) {
-			this.publisher = p;
-		}
-		
-	    @Override
-	    public void run() {
-	        	while (running) {
-	        		try {
-						report_temp(publisher);
-						Thread.sleep(1000);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-	        	}
-	        }
-	    }
-	
+	public static void saveTemperature(Double t) {
+		taskExecutor.execute(new Runnable() {
+            public void run() {
+                try {
+                	Database Cdb = Cloudant.getDb("db20");
+	        		UUID uuid = UUID.randomUUID();
+	        		TemperatureItem ti = new TemperatureItem(tempSPartition + ":" + uuid.toString(), t);
+	        		Response response = Cdb.save(ti);
+	        		System.out.println("Cambio de estado del switch almacenado en la partición " + tempSPartition);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+	}
 
 }

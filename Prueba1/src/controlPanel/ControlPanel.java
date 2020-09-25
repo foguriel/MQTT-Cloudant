@@ -1,6 +1,10 @@
 package controlPanel;
 
 import java.util.Scanner;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -10,15 +14,14 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
+import generalPackage.Cloudant;
+import generalPackage.SwitchItem;
+import generalPackage.SwitchItemState;
 import generalPackage.TemperatureItem;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
-
 import com.cloudant.client.api.*;
 import com.cloudant.client.api.model.Response;
 
@@ -26,7 +29,11 @@ public class ControlPanel {
 
 	static int QOS = 0;
 	static Double temperaturaX;
-	static Database Cdb;
+	static String tempCPPartition = "tempCP";
+	static String switchCPartition = "switchChange";
+	static String switchSPartition = "switchStatus";
+	
+	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
 	
 	@SuppressWarnings("unchecked")
     public static void disableAccessWarnings() {
@@ -100,6 +107,7 @@ public class ControlPanel {
 	                	ObjectMapper mapper= new ObjectMapper();
 				    	JsonNode obj = mapper.readTree( payload.toString() );
 				    	System.out.println("Reportando el estado: " + (String.valueOf(obj.get("status").asText()).equals("true") ? "ENCENDIDO" : "APAGADO"));
+				    	saveSwitchState (obj);
 	                }else {
 	                	System.out.println("Se recibió un mensaje inválido.");
 	                }
@@ -120,20 +128,25 @@ public class ControlPanel {
 			System.out.println(" 1) Consultar la temperatura");
 			System.out.println(" 2) Prender/apagar la luz");
 			System.out.println(" 3) Consultar el estado de la luz");
-			System.out.println(" 4) Prueba de conexión");
+			//System.out.println(" 4) Prueba de conexión");
 			System.out.println(" q) Cerrar el panel de control");
 						
+			
+			
+			
 			Scanner choose = new Scanner(System.in);
 		    String choice= null;
 		    while (!"q".equals(choice)) {
 		        choice = choose.nextLine();
 		        if ("1".equals(choice)) {
 		        	System.out.println("La temperatura es " + temperaturaX.toString());
+		        	saveTemperature(temperaturaX);
 		            choice = null;
 		        }
 		        if ("2".equals(choice)) {
 		            msgToSwitch(publisher, "toggle");
 		        	System.out.println("Se modificó el estado de la luz.");
+		        	saveSwitchStateChange();
 		            choice = null;
 		        }
 		        if ("3".equals(choice)) {
@@ -141,25 +154,16 @@ public class ControlPanel {
 		            choice = null;
 		        }
 		        if ("4".equals(choice)) {
-		        	
-		        	Cdb = getDb("db20");
-		        	
-		        	//TemperatureItem ti = new TemperatureItem(3);
-		        	//Response response = Cdb.save(ti);
-		        	
-		        	 JsonObject json = new JsonObject();
-		        	 json.addProperty("_id", "1:test-doc-id-2");
-		        	 json.add("json-array", new JsonArray());
-		        	 Response response = Cdb.save(json);
-		        	 
-		        	
 		            choice = null;
+		        }
+		        if ("q".equals(choice)) {
+		        	//ExecutorService.shutdown;
+		        	taskExecutor.shutdown();
 		        }
 		        
 		    }
 		    choose.close();
 			
-						
 			publisher.unsubscribe("iot-2/type/Sensor/id/TEMPERATURE1/evt/temperature/fmt/json");
 			publisher.unsubscribe("iot-2/type/Switch/id/LIGHTSWITCH1/evt/switch_status/fmt/json");
 		}
@@ -169,26 +173,54 @@ public class ControlPanel {
 
 	}
 	
-	public static CloudantClient connect() throws Exception {
-		CloudantClient client = ClientBuilder.url(new URL("https://2eddbd51-59ea-4e2a-88c4-77b2fa3b56bd-bluemix.cloudantnosqldb.appdomain.cloud"))
-			.iamApiKey("zmH8P6kAH5h2PUjpbb1620XUCDx8B8HniCUHvpBbUoGu")
-            .build();
-		
-		System.out.println("Conectado - " + client.getBaseUri());
-		
-		return client;
-		
+	
+	
+	public static void saveSwitchState(JsonNode obj) {
+		taskExecutor.execute(new Runnable() {
+			public void run() {
+                try {
+                	Database Cdb = Cloudant.getDb("db20");
+	        		UUID uuid = UUID.randomUUID();
+	        		SwitchItemState ti = new SwitchItemState(switchSPartition + ":" + uuid.toString(), obj.get("status").asBoolean());
+	        		Response response = Cdb.save(ti);
+	        		System.out.println("Estado del switch almacenado en la partición " + switchSPartition);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 	}
 	
-	public static Database getDb(String dbName) throws Exception {
-		
-		Database db = connect().database(dbName, false);
-		
-		System.out.println("Base de datos disponible - " + db.getDBUri());
-		
-		return db;
-		
+	public static void saveSwitchStateChange() {
+		taskExecutor.execute(new Runnable() {
+            public void run() {
+                try {
+                	Database Cdb = Cloudant.getDb("db20");
+	        		UUID uuid = UUID.randomUUID();
+	        		SwitchItem ti = new SwitchItem(switchCPartition + ":" + uuid.toString());
+	        		Response response = Cdb.save(ti);
+	        		System.out.println("Cambio de estado del switch almacenado en la partición " + switchCPartition);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 	}
 	
+	public static void saveTemperature(Double t) {
+		taskExecutor.execute(new Runnable() {
+            public void run() {
+                try {
+                	Database Cdb = Cloudant.getDb("db20");
+	        		UUID uuid = UUID.randomUUID();
+	        		TemperatureItem ti = new TemperatureItem(tempCPPartition + ":" + uuid.toString(), t);
+	        		Response response = Cdb.save(ti);
+	        		System.out.println("Registro almacenado correctamente en la partición: " + tempCPPartition);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+	}
 
 }
