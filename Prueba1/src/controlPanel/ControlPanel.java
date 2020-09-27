@@ -1,5 +1,7 @@
 package controlPanel;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -11,6 +13,22 @@ import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+
+import com.cloudant.client.api.Database;
+//import com.cloudant.client.api.model.Shard;
+//import com.cloudant.client.api.query.JsonIndex;
+//import com.cloudant.client.api.model.Response;
+import com.cloudant.client.api.query.QueryBuilder;
+import com.cloudant.client.api.query.QueryResult;
+import com.cloudant.client.api.query.Selector;
+import com.cloudant.client.api.query.Sort;
+
+import static com.cloudant.client.api.query.Expression.lt;
+import static com.cloudant.client.api.query.Expression.gt;
+import static com.cloudant.client.api.query.Expression.eq;
+import static com.cloudant.client.api.query.Operation.and;
+import static com.cloudant.client.api.query.Operation.or;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -21,9 +39,7 @@ import generalPackage.SwitchItemState;
 import generalPackage.TemperatureItem;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URL;
-import com.cloudant.client.api.*;
-import com.cloudant.client.api.model.Response;
+
 
 public class ControlPanel {
 
@@ -32,10 +48,10 @@ public class ControlPanel {
 	static String tempCPPartition = "tempCP";
 	static String switchCPartition = "switchChange";
 	static String switchSPartition = "switchStatus";
+	static String tempPartition = "tempSensor";
 	
 	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
 	
-	@SuppressWarnings("unchecked")
     public static void disableAccessWarnings() {
         try {
             Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
@@ -81,7 +97,8 @@ public class ControlPanel {
 		String IBMIoT = "tcp://6relw0.messaging.internetofthings.ibmcloud.com:1883";
 		String user = "a-6relw0-qcs1tfgehi";
 		String password = "oOHaAYApM8YXYKIObq";
-		
+		Database CdbL = Cloudant.getDb("db20"); 
+			
 		IMqttClient publisher = new MqttClient(IBMIoT, publisherId);
 		
 		MqttConnectOptions options = new MqttConnectOptions();
@@ -128,11 +145,13 @@ public class ControlPanel {
 			System.out.println(" 1) Consultar la temperatura");
 			System.out.println(" 2) Prender/apagar la luz");
 			System.out.println(" 3) Consultar el estado de la luz");
-			//System.out.println(" 4) Prueba de conexión");
+			System.out.println(" 4) Listar las últimas 10 temperaturas registradas.");
+			System.out.println(" 5) Listar los últimos 10 reportes de estado del switch.");
+			System.out.println(" 6) Listar los últimos 10 cambios de estado del switch.");
 			System.out.println(" q) Cerrar el panel de control");
-						
-			
-			
+				
+			//Se ejecuta una sola vez.
+			//CdbL.createIndex(JsonIndex.builder().asc("fecha").definition());
 			
 			Scanner choose = new Scanner(System.in);
 		    String choice= null;
@@ -140,13 +159,21 @@ public class ControlPanel {
 		        choice = choose.nextLine();
 		        if ("1".equals(choice)) {
 		        	System.out.println("La temperatura es " + temperaturaX.toString());
-		        	saveTemperature(temperaturaX);
+	        		UUID uuid = UUID.randomUUID();
+	        		TemperatureItem ti = new TemperatureItem(tempCPPartition + ":" + uuid.toString(), temperaturaX);
+	        		//Response response = 
+    				CdbL.save(ti);
+	        		System.out.println("Registro almacenado correctamente en la partición: " + tempCPPartition);
 		            choice = null;
 		        }
 		        if ("2".equals(choice)) {
 		            msgToSwitch(publisher, "toggle");
 		        	System.out.println("Se modificó el estado de la luz.");
-		        	saveSwitchStateChange();
+	        		UUID uuid = UUID.randomUUID();
+	        		SwitchItem ti = new SwitchItem(switchCPartition + ":" + uuid.toString());
+	        		//Response response = 
+    				CdbL.save(ti);
+	        		System.out.println("Cambio de estado del switch almacenado en la partición " + switchCPartition);
 		            choice = null;
 		        }
 		        if ("3".equals(choice)) {
@@ -154,13 +181,56 @@ public class ControlPanel {
 		            choice = null;
 		        }
 		        if ("4".equals(choice)) {
+		        	Selector selector = gt("fecha.date.month", 1);
+  		        	QueryResult<TemperatureItem> temps = CdbL.query(tempPartition,  
+  		        											new QueryBuilder(selector).fields("fecha", "temperature")
+  		        																	  .sort(Sort.desc("fecha"))
+  		        																	  .limit(10)
+  		        																	  .build(), 
+  		        											TemperatureItem.class);
+	        	 	
+  		        	List<TemperatureItem> ts = temps.getDocs();
+  		        	Collections.reverse(ts);
+		        	for (TemperatureItem t : ts) {
+		        		System.out.println(t);
+		        	}
+		            choice = null;
+		        }
+		        if ("5".equals(choice)) {
+		        	Selector selector = gt("fecha.date.month", 1);
+  		        	QueryResult<SwitchItemState> switchChanges = CdbL.query(switchSPartition,  
+  		        											new QueryBuilder(selector).fields("fecha", "encendido")
+  		        																	  .sort(Sort.desc("fecha"))
+  		        																	  .limit(10)
+  		        																	  .build(), 
+  		        																	SwitchItemState.class);
+	        	 	
+  		        	List<SwitchItemState> sc = switchChanges.getDocs();
+  		        	Collections.reverse(sc);
+		        	for (SwitchItemState s : sc) {
+		        		System.out.println(s);
+		        	}
+		            choice = null;
+		        }
+		        if ("6".equals(choice)) {
+		        	Selector selector = gt("fecha.date.month", 1);
+  		        	QueryResult<SwitchItem> switchChanges = CdbL.query(switchCPartition,  
+  		        											new QueryBuilder(selector).fields("fecha", "encendido")
+  		        																	  .sort(Sort.desc("fecha"))
+  		        																	  .limit(10)
+  		        																	  .build(), 
+  		        																	SwitchItem.class);
+	        	 	
+  		        	List<SwitchItem> sc = switchChanges.getDocs();
+  		        	Collections.reverse(sc);
+		        	for (SwitchItem s : sc) {
+		        		System.out.println(s);
+		        	}
 		            choice = null;
 		        }
 		        if ("q".equals(choice)) {
-		        	//ExecutorService.shutdown;
 		        	taskExecutor.shutdown();
 		        }
-		        
 		    }
 		    choose.close();
 			
@@ -170,19 +240,19 @@ public class ControlPanel {
 		
 		publisher.disconnect();
 		publisher.close();
-
+		
+		System.out.println("Panel de control desconectado.");
 	}
-	
-	
 	
 	public static void saveSwitchState(JsonNode obj) {
 		taskExecutor.execute(new Runnable() {
 			public void run() {
                 try {
-                	Database Cdb = Cloudant.getDb("db20");
+                	Database CdbTh = Cloudant.getDb("db20");
 	        		UUID uuid = UUID.randomUUID();
 	        		SwitchItemState ti = new SwitchItemState(switchSPartition + ":" + uuid.toString(), obj.get("status").asBoolean());
-	        		Response response = Cdb.save(ti);
+	        		//Response response = 
+    				CdbTh.save(ti);
 	        		System.out.println("Estado del switch almacenado en la partición " + switchSPartition);
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -191,36 +261,4 @@ public class ControlPanel {
         });
 	}
 	
-	public static void saveSwitchStateChange() {
-		taskExecutor.execute(new Runnable() {
-            public void run() {
-                try {
-                	Database Cdb = Cloudant.getDb("db20");
-	        		UUID uuid = UUID.randomUUID();
-	        		SwitchItem ti = new SwitchItem(switchCPartition + ":" + uuid.toString());
-	        		Response response = Cdb.save(ti);
-	        		System.out.println("Cambio de estado del switch almacenado en la partición " + switchCPartition);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-	}
-	
-	public static void saveTemperature(Double t) {
-		taskExecutor.execute(new Runnable() {
-            public void run() {
-                try {
-                	Database Cdb = Cloudant.getDb("db20");
-	        		UUID uuid = UUID.randomUUID();
-	        		TemperatureItem ti = new TemperatureItem(tempCPPartition + ":" + uuid.toString(), t);
-	        		Response response = Cdb.save(ti);
-	        		System.out.println("Registro almacenado correctamente en la partición: " + tempCPPartition);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-	}
-
 }

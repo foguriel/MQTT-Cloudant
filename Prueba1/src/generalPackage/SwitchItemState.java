@@ -1,6 +1,7 @@
 package generalPackage;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class SwitchItemState extends SwitchItem {
 	
@@ -15,6 +16,16 @@ public class SwitchItemState extends SwitchItem {
 		this.encendido = e;		
 	}
 		
+	public SwitchItemState(LocalDateTime f, boolean e) {
+		super(f);
+		this.encendido = e;
+	}
+	
+	public SwitchItemState(String id, LocalDateTime f, boolean e) {
+		super(id);
+		this.fecha = f;
+		this.encendido = e;
+	}
 	
 	public boolean getEncendido() {
 		return this.encendido;
@@ -22,5 +33,13 @@ public class SwitchItemState extends SwitchItem {
 	
 	public void setEncendido(boolean e) {
 		this.encendido = e;
+	}
+	
+	public String toString() {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formatDateTime = this.fecha.format(formatter);
+        String enc = this.encendido ? "ENCENDIDO" : "APAGADO";
+
+        return formatDateTime + " - " + enc;
 	}
 }

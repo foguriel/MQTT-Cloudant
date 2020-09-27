@@ -1,6 +1,7 @@
 package generalPackage;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class SwitchItem {
 	
@@ -32,6 +33,10 @@ public class SwitchItem {
 		this.fecha = f;
 	}
 	
-	
+	public String toString() {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formatDateTime = this.fecha.format(formatter);
+        return formatDateTime;
+	}
 	
 }

@@ -21,8 +21,7 @@ public class Switch {
 	
 	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
 	
-	@SuppressWarnings("unchecked")
-    public static void disableAccessWarnings() {
+   public static void disableAccessWarnings() {
         try {
             Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
             Field field = unsafeClass.getDeclaredField("theUnsafe");
@@ -130,7 +129,6 @@ public class Switch {
 
 	            public void deliveryComplete(IMqttDeliveryToken token) {
 	            }
-				
 			});
 			
 			publisher.subscribe("iot-2/cmd/switch_request/fmt/json", QOS);

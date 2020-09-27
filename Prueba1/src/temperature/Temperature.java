@@ -20,11 +20,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import generalPackage.Cloudant;
-import generalPackage.SwitchItem;
 import generalPackage.TemperatureItem;
 
 import com.cloudant.client.api.*;
-import com.cloudant.client.api.model.Response;
+//import com.cloudant.client.api.model.Response;
 
 public class Temperature {
 	
@@ -33,9 +32,9 @@ public class Temperature {
 	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
 	static boolean running = true; 
 	static String tempSPartition = "tempSensor";
-	
-	@SuppressWarnings("unchecked")
-    public static void disableAccessWarnings() {
+	static Database Cdb;
+
+	public static void disableAccessWarnings() {
         try {
             Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
             Field field = unsafeClass.getDeclaredField("theUnsafe");
@@ -63,8 +62,12 @@ public class Temperature {
 	        client.publish("iot-2/evt/temperature/fmt/json",msg);      
 	        
 	        ObjectMapper mapper= new ObjectMapper();
-	    	JsonNode obj = mapper.readTree(msg.getPayload().toString());
-	        saveTemperature(obj.get("Temperatura").asDouble());
+	    	JsonNode obj = mapper.readTree( new String(msg.getPayload()).toString() );
+	    	UUID uuid = UUID.randomUUID();
+    		TemperatureItem ti = new TemperatureItem(tempSPartition + ":" + uuid.toString(), obj.get("Temperatura").asDouble());
+    		//Response response = 
+			Cdb.save(ti);
+    		System.out.println("Registro de temperatura almacenado en la partición " + tempSPartition);
         }        
     }
     
@@ -111,6 +114,7 @@ public class Temperature {
 	            public void deliveryComplete(IMqttDeliveryToken token) {
 	            }
 			});
+			Cdb = Cloudant.getDb("db20");
 			
 			ReportThread(publisher);
 			
@@ -122,7 +126,6 @@ public class Temperature {
 		    choose.close();
 		    running = false;
 		    taskExecutor.shutdown();
-		
 			publisher.disconnect();
 		}
 		
@@ -150,21 +153,4 @@ public class Temperature {
             }
         });
 	}
-	
-	public static void saveTemperature(Double t) {
-		taskExecutor.execute(new Runnable() {
-            public void run() {
-                try {
-                	Database Cdb = Cloudant.getDb("db20");
-	        		UUID uuid = UUID.randomUUID();
-	        		TemperatureItem ti = new TemperatureItem(tempSPartition + ":" + uuid.toString(), t);
-	        		Response response = Cdb.save(ti);
-	        		System.out.println("Cambio de estado del switch almacenado en la partición " + tempSPartition);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-	}
-
 }

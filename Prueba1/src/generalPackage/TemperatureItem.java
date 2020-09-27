@@ -1,6 +1,8 @@
 package generalPackage;
 
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class TemperatureItem  {
 	private String _id;
@@ -45,6 +47,14 @@ public class TemperatureItem  {
 	
 	public void setTemperature(double t) {
 		this.temperature = t;
+	}
+	
+	public String toString() {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formatDateTime = this.fecha.format(formatter);
+        String temp = new DecimalFormat("#.0#").format(this.temperature);
+
+        return formatDateTime + " - Temp: " + temp + "º";
 	}
 	
 }
