@@ -31,7 +31,7 @@ public class Temperature {
 	private static Random rnd = new Random();
 	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
 	static boolean running = true; 
-	static String tempSPartition = "tempSensor";
+	//static String tempSPartition = "tempSensor";
 	static Database Cdb;
 
 	public static void disableAccessWarnings() {
@@ -61,13 +61,13 @@ public class Temperature {
 	        msg.setRetained(true);
 	        client.publish("iot-2/evt/temperature/fmt/json",msg);      
 	        
-	        ObjectMapper mapper= new ObjectMapper();
+	        /*ObjectMapper mapper= new ObjectMapper();
 	    	JsonNode obj = mapper.readTree( new String(msg.getPayload()).toString() );
 	    	UUID uuid = UUID.randomUUID();
     		TemperatureItem ti = new TemperatureItem(tempSPartition + ":" + uuid.toString(), obj.get("Temperatura").asDouble());
     		//Response response = 
 			Cdb.save(ti);
-    		System.out.println("Registro de temperatura almacenado en la partición " + tempSPartition);
+    		System.out.println("Registro de temperatura almacenado en la partición " + tempSPartition);*/
         }        
     }
     

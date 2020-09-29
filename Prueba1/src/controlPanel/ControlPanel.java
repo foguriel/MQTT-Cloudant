@@ -44,11 +44,14 @@ import java.lang.reflect.Method;
 public class ControlPanel {
 
 	static int QOS = 0;
-	static Double temperaturaX;
+	static Double temperaturaX = Double.valueOf(-1);
 	static String tempCPPartition = "tempCP";
 	static String switchCPartition = "switchChange";
 	static String switchSPartition = "switchStatus";
 	static String tempPartition = "tempSensor";
+	static String tempSPartition = "tempSensor";
+	
+	static Database CdbL; 
 	
 	static ExecutorService taskExecutor = Executors.newCachedThreadPool();
 	
@@ -97,8 +100,9 @@ public class ControlPanel {
 		String IBMIoT = "tcp://6relw0.messaging.internetofthings.ibmcloud.com:1883";
 		String user = "a-6relw0-qcs1tfgehi";
 		String password = "oOHaAYApM8YXYKIObq";
-		Database CdbL = Cloudant.getDb("db20"); 
-			
+		
+		CdbL = Cloudant.getDb("db20");
+		
 		IMqttClient publisher = new MqttClient(IBMIoT, publisherId);
 		
 		MqttConnectOptions options = new MqttConnectOptions();
@@ -120,6 +124,15 @@ public class ControlPanel {
 						ObjectMapper mapper= new ObjectMapper();
 				    	JsonNode obj = mapper.readTree( payload.toString() );
 				    	temperaturaX = obj.get("Temperatura").asDouble();
+				    	
+				    	//ObjectMapper mapper= new ObjectMapper();
+				    	//JsonNode obj = mapper.readTree( new String(msg.getPayload()).toString() );
+				    	UUID uuid = UUID.randomUUID();
+			    		TemperatureItem ti = new TemperatureItem(tempPartition + ":" + uuid.toString(), temperaturaX);
+			    		//Response response = 
+						CdbL.save(ti);
+			    		System.out.println("Registro de temperatura almacenado en la partición " + tempPartition);
+			    		
 	                }else if(topic.contains("/switch_status/")){
 	                	ObjectMapper mapper= new ObjectMapper();
 				    	JsonNode obj = mapper.readTree( payload.toString() );
@@ -158,12 +171,16 @@ public class ControlPanel {
 		    while (!"q".equals(choice)) {
 		        choice = choose.nextLine();
 		        if ("1".equals(choice)) {
-		        	System.out.println("La temperatura es " + temperaturaX.toString());
-	        		UUID uuid = UUID.randomUUID();
-	        		TemperatureItem ti = new TemperatureItem(tempCPPartition + ":" + uuid.toString(), temperaturaX);
-	        		//Response response = 
-    				CdbL.save(ti);
-	        		System.out.println("Registro almacenado correctamente en la partición: " + tempCPPartition);
+		        	if (temperaturaX != -1) {
+		        		System.out.println("La temperatura es " + temperaturaX.toString());
+		        		UUID uuid = UUID.randomUUID();
+		        		TemperatureItem ti = new TemperatureItem(tempCPPartition + ":" + uuid.toString(), temperaturaX);
+		        		//Response response = 
+	    				CdbL.save(ti);
+		        		//System.out.println("Registro almacenado correctamente en la partición: " + tempCPPartition);
+		        	}else {
+		        		System.out.println("Sensor desconectado...");
+		        	}
 		            choice = null;
 		        }
 		        if ("2".equals(choice)) {
