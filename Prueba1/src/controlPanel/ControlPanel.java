@@ -131,7 +131,7 @@ public class ControlPanel {
 			    		TemperatureItem ti = new TemperatureItem(tempPartition + ":" + uuid.toString(), temperaturaX);
 			    		//Response response = 
 						CdbL.save(ti);
-			    		System.out.println("Registro de temperatura almacenado en la partición " + tempPartition);
+			    		//System.out.println("Registro de temperatura almacenado en la partición " + tempPartition);
 			    		
 	                }else if(topic.contains("/switch_status/")){
 	                	ObjectMapper mapper= new ObjectMapper();
@@ -177,7 +177,7 @@ public class ControlPanel {
 		        		TemperatureItem ti = new TemperatureItem(tempCPPartition + ":" + uuid.toString(), temperaturaX);
 		        		//Response response = 
 	    				CdbL.save(ti);
-		        		//System.out.println("Registro almacenado correctamente en la partición: " + tempCPPartition);
+		        		System.out.println("Registro almacenado correctamente en la partición: " + tempCPPartition);
 		        	}else {
 		        		System.out.println("Sensor desconectado...");
 		        	}
