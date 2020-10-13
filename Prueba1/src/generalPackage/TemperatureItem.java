@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 public class TemperatureItem  {
 	private String _id;
 	private LocalDateTime fecha;
+	private long timestamp;
 	private double temperature;
 	
 	public TemperatureItem(double t) {
@@ -25,12 +26,27 @@ public class TemperatureItem  {
 		this.temperature = t;
 	}
 	
+	public TemperatureItem(String id, LocalDateTime f, long ts, double t) {
+		this._id = id;
+		this.fecha = f;
+		this.timestamp = ts;
+		this.temperature = t;
+	}
+	
 	public String getId() {
 		return this._id;
 	}
 	
 	public void setId(String id) {
 		this._id = id;
+	}
+	
+	public long getTimestamp() {
+		return this.timestamp;
+	}
+	
+	public void setTimestamp(long ts) {
+		this.timestamp = ts;;
 	}
 	
 	public LocalDateTime getFecha() {

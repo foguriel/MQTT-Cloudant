@@ -39,6 +39,8 @@ import generalPackage.SwitchItemState;
 import generalPackage.TemperatureItem;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 
 public class ControlPanel {
@@ -92,6 +94,23 @@ public class ControlPanel {
 		}
     }
 	
+	public static void msgToNodeRed(IMqttClient p, String msgToSw) throws Exception {
+        
+        if ( !p.isConnected()) {
+            System.out.println("El cliente no esta conectado");
+        }else {
+        
+	        ObjectMapper mapper = new ObjectMapper();
+	    	ObjectNode obj = mapper.createObjectNode();
+	    	
+			obj.put("request", msgToSw);
+	    
+	    	byte[] payload = obj.toString().getBytes();
+	        MqttMessage msg = new MqttMessage(payload);
+	        msg.setQos(QOS);
+	        p.publish("iot-2/type/NR/id/NodeRedApp/evt/request/fmt/json", msg);
+		}
+    }
 	
 	public static void main(String[] args) throws Exception {
 		disableAccessWarnings();
@@ -138,6 +157,23 @@ public class ControlPanel {
 				    	JsonNode obj = mapper.readTree( payload.toString() );
 				    	System.out.println("Reportando el estado: " + (String.valueOf(obj.get("status").asText()).equals("true") ? "ENCENDIDO" : "APAGADO"));
 				    	saveSwitchState (obj);
+				    	
+	                }else if(topic.contains("/reply/")){
+	                	ObjectMapper mapper= new ObjectMapper();
+				    	JsonNode obj = mapper.readTree( payload.toString() );
+				    	
+				    	printNodeRedReply(obj);
+				    	
+				    	//System.out.println(obj.toString());
+				    	
+				    	//DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+				    	//LocalDateTime fecha = LocalDateTime.parse(obj.get("fecha").asText(), formatter);
+				    	
+				    	//TemperatureItem ti2 = new TemperatureItem(obj.get("_id").asText(), fecha, Long.valueOf(obj.get("time").asText()), Double.valueOf(obj.get("Temperatura").asText()) );
+				    	
+				    	//System.out.println("Reportando el último documento - " + ti2.toString() );
+				    	
+				    	
 	                }else {
 	                	System.out.println("Se recibió un mensaje inválido.");
 	                }
@@ -153,6 +189,7 @@ public class ControlPanel {
 		
 			publisher.subscribe("iot-2/type/Sensor/id/TEMPERATURE1/evt/temperature/fmt/json", QOS);
 			publisher.subscribe("iot-2/type/Switch/id/LIGHTSWITCH1/evt/switch_status/fmt/json", QOS);
+			publisher.subscribe("iot-2/type/CP/id/ControlPanelApp/evt/reply/fmt/json", QOS);
 
 			System.out.println("Elija una opcion entre:");
 			System.out.println(" 1) Consultar la temperatura");
@@ -161,6 +198,7 @@ public class ControlPanel {
 			System.out.println(" 4) Listar las últimas 10 temperaturas registradas.");
 			System.out.println(" 5) Listar los últimos 10 reportes de estado del switch.");
 			System.out.println(" 6) Listar los últimos 10 cambios de estado del switch.");
+			System.out.println(" 7) Solicitar el último registro de temperatura (Node Red).");
 			System.out.println(" q) Cerrar el panel de control");
 				
 			//Se ejecuta una sola vez.
@@ -184,7 +222,7 @@ public class ControlPanel {
 		            choice = null;
 		        }
 		        if ("2".equals(choice)) {
-		            msgToSwitch(publisher, "toggle");
+		        	msgToSwitch(publisher, "toggle");
 		        	System.out.println("Se modificó el estado de la luz.");
 	        		UUID uuid = UUID.randomUUID();
 	        		SwitchItem ti = new SwitchItem(switchCPartition + ":" + uuid.toString());
@@ -200,7 +238,7 @@ public class ControlPanel {
 		        if ("4".equals(choice)) {
 		        	Selector selector = gt("fecha.date.month", 1);
   		        	QueryResult<TemperatureItem> temps = CdbL.query(tempPartition,  
-  		        											new QueryBuilder(selector).fields("fecha", "temperature")
+  		        											new QueryBuilder(selector).fields("fecha", "timestamp", "temperature")
   		        																	  .sort(Sort.desc("fecha"))
   		        																	  .limit(10)
   		        																	  .build(), 
@@ -245,6 +283,13 @@ public class ControlPanel {
 		        	}
 		            choice = null;
 		        }
+		        if ("7".equals(choice)) {
+		        	
+		        	msgToNodeRed(publisher, "lastTempDocument");
+		        	//System.out.println("...");
+	        		
+		            choice = null;
+		        }
 		        if ("q".equals(choice)) {
 		        	taskExecutor.shutdown();
 		        }
@@ -253,6 +298,7 @@ public class ControlPanel {
 			
 			publisher.unsubscribe("iot-2/type/Sensor/id/TEMPERATURE1/evt/temperature/fmt/json");
 			publisher.unsubscribe("iot-2/type/Switch/id/LIGHTSWITCH1/evt/switch_status/fmt/json");
+			publisher.unsubscribe("iot-2/type/CP/id/ControlPanelApp/evt/reply/fmt/json");
 		}
 		
 		publisher.disconnect();
@@ -277,5 +323,26 @@ public class ControlPanel {
             }
         });
 	}
+	
+	public static void printNodeRedReply(JsonNode obj) {
+		taskExecutor.execute(new Runnable() {
+			public void run() {
+                try {
+                	
+                	//System.out.println(obj.toString());
+			    	
+			    	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+			    	LocalDateTime fecha = LocalDateTime.parse(obj.get("time").asText(), formatter);
+			    	TemperatureItem ti2 = new TemperatureItem(obj.get("_id").asText(), fecha, Long.valueOf(obj.get("timestamp").asText()), Double.valueOf(obj.get("Temperatura").asText()) );
+			    	
+			    	System.out.println("Reportando el último documento - " + ti2.toString() );
+                	
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+	}
+	
 	
 }
