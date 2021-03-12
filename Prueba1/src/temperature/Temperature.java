@@ -84,8 +84,8 @@ public class Temperature {
 	
 	public static void main(String[] args) throws Exception {
 		disableAccessWarnings();
-		String publisherId = "d:6relw0:Sensor:TEMPERATURE1";
-		String IBMIoT = "tcp://6relw0.messaging.internetofthings.ibmcloud.com:1883";
+		String publisherId = "d:9kosrv:Sensor:TEMPERATURE1";
+		String IBMIoT = "tcp://9kosrv.messaging.internetofthings.ibmcloud.com:1883";
 		String user = "use-token-auth";
 		String password = "PDyTR2020";
 			
